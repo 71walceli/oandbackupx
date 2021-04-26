@@ -21,6 +21,8 @@ import android.app.Dialog
 import android.content.DialogInterface
 import android.content.pm.PackageInfo
 import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.ViewGroup
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.DialogFragment
 import com.machiav3lli.backup.PACKAGES_LIST_ARGS_PACKAGES
@@ -58,14 +60,14 @@ class PackagesListDialogFragment(val filter: Int, private val isBlocklist: Boole
                 selections.add(i)
             }
         }
-        return AlertDialog.Builder(requireActivity())
+        val viewGroup = requireView().findViewById(android.R.id.content) as ViewGroup
+        val dialogLayout = LayoutInflater.from(requireContext()).inflate(R.layout.activity_main_x, viewGroup)
+        val dialogBuilder = AlertDialog.Builder(requireActivity())
                 .setTitle(if (isBlocklist) R.string.sched_blocklist else R.string.customListTitle)
-                .setMultiChoiceItems(labels.toTypedArray<CharSequence>(), checkedIndexes) { _: DialogInterface?, index: Int, isChecked: Boolean ->
-                    if (isChecked) selections.add(index) else selections.remove(index) // cast as Integer to distinguish between remove(Object) and remove(index)
-                }
+                .setView(dialogLayout)
                 .setPositiveButton(R.string.dialogOK) { _: DialogInterface?, _: Int -> saveSelected(packagesNames, selections) }
                 .setNegativeButton(R.string.dialogCancel) { dialog: DialogInterface?, _: Int -> dialog?.cancel() }
-                .create()
+        return dialogBuilder.create()
     }
 
     private fun saveSelected(packagesNames: List<String>, selections: List<Int>) {
