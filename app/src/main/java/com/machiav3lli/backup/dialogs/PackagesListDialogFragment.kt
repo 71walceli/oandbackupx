@@ -18,62 +18,69 @@
 package com.machiav3lli.backup.dialogs
 
 import android.app.Dialog
-import android.content.DialogInterface
-import android.content.pm.PackageInfo
 import android.os.Bundle
-import android.view.LayoutInflater
-import android.view.ViewGroup
-import androidx.appcompat.app.AlertDialog
+import android.widget.Button
 import androidx.fragment.app.DialogFragment
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.machiav3lli.backup.PACKAGES_LIST_ARGS_PACKAGES
 import com.machiav3lli.backup.R
 import com.machiav3lli.backup.handler.BackendController
+import com.machiav3lli.backup.items.ItemMultichoice
+import com.mikepenz.fastadapter.FastAdapter
+import com.mikepenz.fastadapter.adapters.ItemAdapter
+import com.mikepenz.fastadapter.select.SelectExtension
+
 
 class PackagesListDialogFragment(val filter: Int, private val isBlocklist: Boolean, private val onPackagesListChanged: (newList: Set<String>) -> Unit) : DialogFragment() {
 
-    override fun onCreateDialog(savedInstance: Bundle?): Dialog {
-        val pm = requireContext().packageManager
-        val args = this.requireArguments()
-        val selectedPackages = args.getStringArrayList(PACKAGES_LIST_ARGS_PACKAGES) ?: arrayListOf()
+    val multichoiceAdapter = ItemAdapter<ItemMultichoice>()
+    var multichoiceFastAdapter: FastAdapter<ItemMultichoice>? = null
+    lateinit var selectExtension: SelectExtension<ItemMultichoice>
 
-        var packageInfoList = BackendController.getPackageInfoList(requireContext(), filter)
-        packageInfoList = packageInfoList.sortedWith { pi1: PackageInfo, pi2: PackageInfo ->
-            val b1 = selectedPackages.contains(pi1.packageName)
-            val b2 = selectedPackages.contains(pi2.packageName)
-            if (b1 != b2)
-                if (b1) -1 else 1
-            else {
-                val l1 = pi1.applicationInfo.loadLabel(pm).toString()
-                val l2 = pi2.applicationInfo.loadLabel(pm).toString()
-                l1.compareTo(l2, ignoreCase = true)
-            }
-        }
-        val labels = mutableListOf<String>()
+    override fun onCreateDialog(savedInstance: Bundle?): Dialog {
+        val selectedPackages = requireArguments().getStringArrayList(PACKAGES_LIST_ARGS_PACKAGES) ?: arrayListOf()
         val packagesNames = mutableListOf<String>()
-        val checkedIndexes = BooleanArray(packageInfoList.size)
-        val selections = mutableListOf<Int>()
-        packageInfoList.forEachIndexed { i, packageInfo ->
-            labels.add(packageInfo.applicationInfo.loadLabel(pm).toString())
-            packagesNames.add(packageInfo.packageName)
-            if (selectedPackages.contains(packageInfo.packageName)) {
-                checkedIndexes[i] = true
-                selections.add(i)
-            }
+        packagesNames.addAll(selectedPackages)
+        val appList = BackendController.getApplicationList(requireContext(), false)
+        
+        multichoiceFastAdapter = FastAdapter.with(multichoiceAdapter)
+        multichoiceFastAdapter?.onClickListener = { view, adapter, item, position ->
+            item.isChecked = !item.isChecked
+            if (item.isChecked)
+                packagesNames.add(item.app.packageName)
+            else
+                packagesNames.remove(item.app.packageName)
+            true // consume otherwise radio/checkbox will be deselected
         }
-        val viewGroup = requireView().findViewById(android.R.id.content) as ViewGroup
-        val dialogLayout = LayoutInflater.from(requireContext()).inflate(R.layout.activity_main_x, viewGroup)
-        val dialogBuilder = AlertDialog.Builder(requireActivity())
-                .setTitle(if (isBlocklist) R.string.sched_blocklist else R.string.customListTitle)
-                .setView(dialogLayout)
-                .setPositiveButton(R.string.dialogOK) { _: DialogInterface?, _: Int -> saveSelected(packagesNames, selections) }
-                .setNegativeButton(R.string.dialogCancel) { dialog: DialogInterface?, _: Int -> dialog?.cancel() }
-        return dialogBuilder.create()
+        //multichoiceFastAdapter?.onPreClickListener = { _: View?, _: IAdapter<ItemMultichoice>, _: ItemMultichoice, _: Int ->
+        //    false
+        //}
+        //selectExtension = multichoiceFastAdapter!!.getSelectExtension()
+        //selectExtension.isSelectable = true
+
+        multichoiceAdapter.set(appList.map { 
+            val itemMultiChoice = ItemMultichoice(it, it.packageName in packagesNames)
+            itemMultiChoice
+        })
+        val dialog = Dialog(requireActivity())
+        dialog.setTitle(if (isBlocklist) R.string.sched_blocklist else R.string.customListTitle)
+        dialog.setContentView(R.layout.fragment_multichoice_list)
+        val recyclerView = dialog.findViewById<RecyclerView>(R.id.multichoiceRecyclerView)
+        recyclerView.adapter = multichoiceFastAdapter
+        recyclerView.layoutManager = LinearLayoutManager(requireContext())
+        dialog.findViewById<Button>(R.id.ok).setOnClickListener{
+            saveSelected(packagesNames)
+            dialog.dismiss()
+        }
+        dialog.findViewById<Button>(R.id.cancel).setOnClickListener{ dialog.cancel() }
+        val width = (resources.displayMetrics.widthPixels * 0.90).toInt()
+        val height = (resources.displayMetrics.heightPixels * 0.90).toInt()
+        dialog.window?.setLayout(width, height)
+        return dialog
     }
 
-    private fun saveSelected(packagesNames: List<String>, selections: List<Int>) {
-        val selectedPackages = selections
-                .map { packagesNames[it] }
-                .toSet()
-        onPackagesListChanged(selectedPackages)
+    private fun saveSelected(packagesNames: List<String>) {
+        onPackagesListChanged(packagesNames.toSet())
     }
 }
