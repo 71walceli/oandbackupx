@@ -23,10 +23,11 @@ import android.widget.Button
 import androidx.fragment.app.DialogFragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.machiav3lli.backup.PACKAGES_LIST_ARGS_PACKAGES
 import com.machiav3lli.backup.R
-import com.machiav3lli.backup.handler.BackendController
+import com.machiav3lli.backup.handler.getApplicationList
+import com.machiav3lli.backup.items.AppInfo
 import com.machiav3lli.backup.items.ItemMultichoice
+import com.machiav3lli.backup.utils.getBackupDir
 import com.mikepenz.fastadapter.FastAdapter
 import com.mikepenz.fastadapter.adapters.ItemAdapter
 import com.mikepenz.fastadapter.select.SelectExtension
@@ -43,10 +44,18 @@ class PackagesListDialogFragment(private val selectedPackages: List<String>,
     lateinit var selectExtension: SelectExtension<ItemMultichoice>
 
     override fun onCreateDialog(savedInstance: Bundle?): Dialog {
-        val selectedPackages = requireArguments().getStringArrayList(PACKAGES_LIST_ARGS_PACKAGES) ?: arrayListOf()
         val packagesNames = mutableListOf<String>()
         packagesNames.addAll(selectedPackages)
-        val appList = BackendController.getApplicationList(requireContext(), false)
+        val appList = requireContext().getApplicationList(selectedPackages  // Excluces selected
+            , false)
+        appList.sortBy { it.packageName+it.packageLabel }
+        // As implemented originally, show the previoulsy selected first
+        appList.addAll(0,
+            selectedPackages.map {
+                val appInfo = AppInfo(requireContext(), requireContext().getBackupDir().uri, it)
+                appInfo
+            }.toMutableList()
+        )
 
         multichoiceFastAdapter = FastAdapter.with(multichoiceAdapter)
         multichoiceFastAdapter?.onClickListener = { view, adapter, item, position ->

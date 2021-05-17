@@ -45,9 +45,9 @@ class ItemMultichoice(var app: AppInfo, var isChecked: Boolean = false)
         binding.icon.setIcon(app.appMetaInfo)
         binding.label.text = app.packageLabel
         binding.packageName.text = app.packageName
-        binding.lastBackup.text = getFormattedDate(app.latestBackup?.backupProperties?.backupDate,
-                false)
-        binding.update.setExists(app.hasBackups && app.isUpdated)
+        binding.lastBackup.text = app.latestBackup?.backupProperties?.backupDate
+            ?.getFormattedDate(false)
+        binding.update.setExists(app.hasBackups && app.isUpdated )
         binding.apkMode.setExists(app.hasApk)
         binding.dataMode.setExists(app.hasAppData)
         binding.extDataMode.setExists(app.hasExternalData)
