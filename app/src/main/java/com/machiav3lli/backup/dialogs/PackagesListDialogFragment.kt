@@ -30,6 +30,7 @@ import com.machiav3lli.backup.items.ItemMultichoice
 import com.mikepenz.fastadapter.FastAdapter
 import com.mikepenz.fastadapter.adapters.ItemAdapter
 import com.mikepenz.fastadapter.select.SelectExtension
+import com.mikepenz.fastadapter.select.getSelectExtension
 
 
 class PackagesListDialogFragment(val filter: Int, private val isBlocklist: Boolean, private val onPackagesListChanged: (newList: Set<String>) -> Unit) : DialogFragment() {
@@ -51,13 +52,11 @@ class PackagesListDialogFragment(val filter: Int, private val isBlocklist: Boole
                 packagesNames.add(item.app.packageName)
             else
                 packagesNames.remove(item.app.packageName)
-            true // consume otherwise radio/checkbox will be deselected
+            multichoiceFastAdapter!!.notifyAdapterDataSetChanged()
+            true
         }
-        //multichoiceFastAdapter?.onPreClickListener = { _: View?, _: IAdapter<ItemMultichoice>, _: ItemMultichoice, _: Int ->
-        //    false
-        //}
-        //selectExtension = multichoiceFastAdapter!!.getSelectExtension()
-        //selectExtension.isSelectable = true
+        selectExtension = multichoiceFastAdapter!!.getSelectExtension()
+        selectExtension.isSelectable = true
 
         multichoiceAdapter.set(appList.map { 
             val itemMultiChoice = ItemMultichoice(it, it.packageName in packagesNames)
