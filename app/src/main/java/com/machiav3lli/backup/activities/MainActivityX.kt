@@ -39,6 +39,8 @@ import com.google.android.material.snackbar.Snackbar
 import com.machiav3lli.backup.*
 import com.machiav3lli.backup.R
 import com.machiav3lli.backup.databinding.ActivityMainXBinding
+import com.machiav3lli.backup.dbs.BlocklistDao
+import com.machiav3lli.backup.dbs.BlocklistDatabase
 import com.machiav3lli.backup.dialogs.BatchDialogFragment
 import com.machiav3lli.backup.fragments.AppSheet
 import com.machiav3lli.backup.fragments.HelpSheet
@@ -61,7 +63,7 @@ import com.mikepenz.fastadapter.listeners.ClickEventHook
 import com.topjohnwu.superuser.Shell
 import timber.log.Timber
 
-class MainActivityX : BaseActivity(), BatchDialogFragment.ConfirmListener, SharedPreferences.OnSharedPreferenceChangeListener {
+class MainActivityX : BaseActivity(), BatchDialogFragment.ConfirmListener {
 
     companion object {
         var shellHandlerInstance: ShellHandler? = null
@@ -78,12 +80,13 @@ class MainActivityX : BaseActivity(), BatchDialogFragment.ConfirmListener, Share
     }
 
     private lateinit var prefs: SharedPreferences
+    private lateinit var blocklistDao: BlocklistDao
     private var navController: NavController? = null
     private var powerManager: PowerManager? = null
     private var searchViewController: SearchViewController? = null
 
     lateinit var binding: ActivityMainXBinding
-    private lateinit var viewModel: MainViewModel
+    lateinit var viewModel: MainViewModel
     val mainItemAdapter = ItemAdapter<MainItemX>()
     private var mainFastAdapter: FastAdapter<MainItemX>? = null
     val batchItemAdapter = ItemAdapter<BatchItemX>()
@@ -102,13 +105,15 @@ class MainActivityX : BaseActivity(), BatchDialogFragment.ConfirmListener, Share
         Shell.getShell()
         binding = ActivityMainXBinding.inflate(layoutInflater)
         binding.lifecycleOwner = this
-        setContentView(binding.root)
+        blocklistDao = BlocklistDatabase.getInstance(this).blocklistDao
         powerManager = getSystemService(POWER_SERVICE) as PowerManager
-        prefs = getPrivateSharedPrefs(this)
-        prefs.registerOnSharedPreferenceChangeListener(this)
-        val viewModelFactory = MainViewModelFactory(this, application)
+        prefs = getPrivateSharedPrefs()
+        val viewModelFactory = MainViewModelFactory(this, blocklistDao, application)
         viewModel = ViewModelProvider(this, viewModelFactory).get(MainViewModel::class.java)
-        if (!isRememberFiltering(this)) saveFilterPreferences(this, SortFilterModel())
+        if (!isRememberFiltering) {
+            this.sortFilterModel = SortFilterModel()
+            this.sortOrder = false
+        }
         viewModel.refreshActive.observe(this, {
             binding.refreshLayout.isRefreshing = it
             if (it) searchViewController?.clean()
@@ -132,15 +137,27 @@ class MainActivityX : BaseActivity(), BatchDialogFragment.ConfirmListener, Share
                 binding.updatedBar.visibility = View.GONE
             }
         })
+        viewModel.blocklist.observe(this, {
+            viewModel.refreshList()
+        })
         initShell()
         runOnUiThread { showEncryptionDialog() }
         setupViews()
+        setContentView(binding.root)
     }
 
     override fun onStart() {
         super.onStart()
         setupOnClicks()
         setupNavigation()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (isNeedRefresh) {
+            viewModel.refreshList()
+            isNeedRefresh = false
+        }
     }
 
     override fun onBackPressed() {
@@ -151,7 +168,7 @@ class MainActivityX : BaseActivity(), BatchDialogFragment.ConfirmListener, Share
         if (viewModel.initial.value != true) refreshView()
         else {
             viewModel.refreshList()
-            setNeedRefresh(this, false)
+            isNeedRefresh = false
         }
     }
 
@@ -230,7 +247,7 @@ class MainActivityX : BaseActivity(), BatchDialogFragment.ConfirmListener, Share
         binding.buttonScheduler.setOnClickListener { startActivity(Intent(applicationContext, SchedulerActivityX::class.java)) }
         binding.buttonSortFilter.setOnClickListener {
             if (sheetSortFilter == null) sheetSortFilter = SortFilterSheet(SortFilterModel(
-                    getFilterPreferences(this).toString()),
+                    sortFilterModel.toString()),
                     getStats(viewModel.appInfoList.value ?: mutableListOf())
             )
             sheetSortFilter?.show(supportFragmentManager, "SORTFILTER_SHEET")
@@ -374,7 +391,7 @@ class MainActivityX : BaseActivity(), BatchDialogFragment.ConfirmListener, Share
     }
 
     private fun showEncryptionDialog() {
-        val dontShowAgain = isEncryptionEnabled(this)
+        val dontShowAgain = isEncryptionEnabled()
         if (dontShowAgain) return
         val dontShowCounter = prefs.getInt(PREFS_SKIPPEDENCRYPTION, 0)
         prefs.edit().putInt(PREFS_SKIPPEDENCRYPTION, dontShowCounter + 1).apply()
@@ -477,7 +494,7 @@ class MainActivityX : BaseActivity(), BatchDialogFragment.ConfirmListener, Share
                             notificationId.toInt(), title, message, true)
 
                     val overAllResult = ActionResult(null, null, errors, resultsSuccess)
-                    showActionResult(this@MainActivityX, overAllResult,
+                    this@MainActivityX.showActionResult(overAllResult,
                             if (overAllResult.succeeded) null
                             else DialogInterface.OnClickListener { _: DialogInterface?, _: Int ->
                                 LogsHandler.logErrors(this@MainActivityX, errors.dropLast(2))
@@ -498,17 +515,10 @@ class MainActivityX : BaseActivity(), BatchDialogFragment.ConfirmListener, Share
         }
     }
 
-    override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
-        if (isNeedRefresh(this)) {
-            viewModel.refreshList()
-            setNeedRefresh(this, false)
-        }
-    }
-
     private fun initShell() {
         // Initialize the ShellHandler for further root checks
         if (!initShellHandler()) {
-            showWarning(this, MainActivityX::class.java.simpleName, this.getString(R.string.shell_initproblem)) { _: DialogInterface?, _: Int -> finishAffinity() }
+            showWarning(MainActivityX::class.java.simpleName, getString(R.string.shell_initproblem)) { _: DialogInterface?, _: Int -> finishAffinity() }
         }
     }
 
@@ -528,12 +538,12 @@ class MainActivityX : BaseActivity(), BatchDialogFragment.ConfirmListener, Share
             viewModel.apkCheckedList.clear()
             viewModel.dataCheckedList.clear()
         }
-        sheetSortFilter = SortFilterSheet(getFilterPreferences(this), getStats(viewModel.appInfoList.value
+        sheetSortFilter = SortFilterSheet(sortFilterModel, getStats(viewModel.appInfoList.value
                 ?: mutableListOf()))
         Thread {
             try {
-                val filteredList = applyFilter(viewModel.appInfoList.value
-                        ?: listOf(), getFilterPreferences(this).toString(), this)
+                val filteredList = viewModel.appInfoList.value?.applyFilter(sortFilterModel.toString(), this)
+                        ?: listOf()
                 when {
                     mainBoolean -> refreshMain(filteredList, backupOrAppSheetBoolean)
                     else -> refreshBatch(filteredList, backupOrAppSheetBoolean)

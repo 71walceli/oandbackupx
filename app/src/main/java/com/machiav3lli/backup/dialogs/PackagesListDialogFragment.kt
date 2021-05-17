@@ -33,7 +33,10 @@ import com.mikepenz.fastadapter.select.SelectExtension
 import com.mikepenz.fastadapter.select.getSelectExtension
 
 
-class PackagesListDialogFragment(val filter: Int, private val isBlocklist: Boolean, private val onPackagesListChanged: (newList: Set<String>) -> Unit) : DialogFragment() {
+class PackagesListDialogFragment(private val selectedPackages: List<String>,
+                                 val filter: Int, private val isBlocklist: Boolean,
+                                 private val onPackagesListChanged: (newList: Set<String>) -> Unit)
+    : DialogFragment() {
 
     val multichoiceAdapter = ItemAdapter<ItemMultichoice>()
     var multichoiceFastAdapter: FastAdapter<ItemMultichoice>? = null
@@ -44,7 +47,7 @@ class PackagesListDialogFragment(val filter: Int, private val isBlocklist: Boole
         val packagesNames = mutableListOf<String>()
         packagesNames.addAll(selectedPackages)
         val appList = BackendController.getApplicationList(requireContext(), false)
-        
+
         multichoiceFastAdapter = FastAdapter.with(multichoiceAdapter)
         multichoiceFastAdapter?.onClickListener = { view, adapter, item, position ->
             item.isChecked = !item.isChecked
@@ -58,7 +61,7 @@ class PackagesListDialogFragment(val filter: Int, private val isBlocklist: Boole
         selectExtension = multichoiceFastAdapter!!.getSelectExtension()
         selectExtension.isSelectable = true
 
-        multichoiceAdapter.set(appList.map { 
+        multichoiceAdapter.set(appList.map {
             val itemMultiChoice = ItemMultichoice(it, it.packageName in packagesNames)
             itemMultiChoice
         })

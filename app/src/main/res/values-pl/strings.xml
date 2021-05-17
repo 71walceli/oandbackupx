@@ -15,8 +15,6 @@
     <string name="radio_data">Dane</string>
     <string name="radio_special">Pokaż tylko specjalne kopie zapasowe</string>
     <string name="de_selectAll">Odznacz/zaznacz wszystko</string>
-    <string name="onlyApkBackedUp">Tylko APK</string>
-    <string name="onlyDataBackedUp">Tylko dane</string>
     <string name="refresh">Odśwież</string>
     <string name="batchbackup">Grupowa kopia zapasowa</string>
     <string name="batchrestore">Grupowe przywracanie</string>
@@ -187,7 +185,6 @@
     <string name="sort_and_filter">Sortowanie i filtrowanie</string>
     <string name="enable_encryption_message">Przechowywanie danych na urządzeniu nie jest bezpieczne. Dla bezpieczeństwa włącz szyfrowanie i ustaw hasło.</string>
     <string name="enable_encryption_title">Szyfrowanie danych</string>
-    <string name="help_group">Nasza grupa</string>
     <string name="cache_size">Rozmiar pamięci podręcznej:</string>
     <string name="data_size">Rozmiar danych:</string>
     <string name="app_size">Rozmiar aplikacji:</string>

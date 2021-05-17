@@ -11,8 +11,6 @@
     <string name="radio_data">Data</string>
     <string name="radio_both">APK en Data</string>
     <string name="de_selectAll">De/selecteer alles</string>
-    <string name="onlyApkBackedUp">Alleen APK</string>
-    <string name="onlyDataBackedUp">Alleen data</string>
     <string name="refresh">Verversen</string>
     <string name="batchbackup">Batch back-up</string>
     <string name="batchrestore">Batch terugzetten</string>
@@ -128,7 +126,6 @@
     <string name="sort_and_filter">Sorteer &amp; Filter</string>
     <string name="enable_encryption_message">Het is niet veilig om onversleutelde data op het apparaat te bewaren. Voor de veiligheid van de data, schakel encryptie in en stel een wachtwoord in.</string>
     <string name="enable_encryption_title">Data Encryptie</string>
-    <string name="help_group">Onze Groep</string>
     <string name="cache_size">Cache Grootte:</string>
     <string name="data_size">Data Grootte:</string>
     <string name="app_size">App Grootte:</string>

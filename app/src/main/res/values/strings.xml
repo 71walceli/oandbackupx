@@ -20,8 +20,6 @@
     <string name="radio_deviceprotecteddata">Device Protected Data</string>
     <string name="radio_obbdata">OBB Data</string>
     <string name="de_selectAll">De/select all</string>
-    <string name="onlyApkBackedUp">APK only</string>
-    <string name="onlyDataBackedUp">Data only</string>
     <string name="refresh">Refresh</string>
     <string name="batchbackup">Batch backup</string>
     <string name="batchrestore">Batch restore</string>
@@ -206,7 +204,8 @@
     <string name="cache_size">Cache Size:</string>
     <string name="logfileSavedAt" translatable="false">Logfile saved at %s</string>
     <string name="help_license">License</string>
-    <string name="help_group">Our Group</string>
+    <string name="help_group_telegram">Our Group on Telegram</string>
+    <string name="help_group_matrix">Our Group on Matrix</string>
     <string name="help_faq">Frequently Asked Questions</string>
     <string name="help_legend">Legend:</string>
     <string name="help_appTypeHint">* App type\'s icon would be gray if the app is uninstalled and dark gray if the app is disabled.</string>
@@ -264,6 +263,10 @@
     <string name="sched_exported">Schedules were exported sucessfully</string>
     <string name="sched_imported">Schedule imported successfully</string>
     <string name="logs_share_failed">Log file not found</string>
+    <string name="sortAscDesc">Ascending-Descending</string>
+    <string name="forceKill">Force kill</string>
+    <string name="global_blocklist_add">Add to the global blocklist</string>
+    <string name="intro_permission_storage_location_warning">Don\'t pick the main storage directory or Downloads folder, create a folder only for your backups. More on this in the FAQ</string>
     <plurals name="sched_interval_formal">
         <item quantity="one">each day</item>
         <item quantity="other">each %d days</item>

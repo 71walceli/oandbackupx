@@ -20,14 +20,17 @@ package com.machiav3lli.backup.viewmodels
 import android.app.Application
 import android.net.Uri
 import androidx.lifecycle.*
-import com.machiav3lli.backup.handler.BackendController
+import com.machiav3lli.backup.PACKAGES_LIST_GLOBAL_ID
+import com.machiav3lli.backup.dbs.Blocklist
+import com.machiav3lli.backup.dbs.BlocklistDao
+import com.machiav3lli.backup.handler.getApplicationList
 import com.machiav3lli.backup.items.AppInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
-class MainViewModel(private val appContext: Application)
+class MainViewModel(val database: BlocklistDao, private val appContext: Application)
     : AndroidViewModel(appContext) {
 
     val apkCheckedList = mutableListOf<String>()
@@ -35,6 +38,8 @@ class MainViewModel(private val appContext: Application)
     val dataCheckedList = mutableListOf<String>()
 
     var appInfoList = MediatorLiveData<MutableList<AppInfo>>()
+
+    var blocklist = MediatorLiveData<List<Blocklist>>()
 
     private val _initial = MutableLiveData<Boolean>()
     val initial: LiveData<Boolean>
@@ -50,6 +55,7 @@ class MainViewModel(private val appContext: Application)
 
     init {
         _initial.value = true
+        blocklist.addSource(database.liveAll, blocklist::setValue)
         nUpdatedApps.value = 0
     }
 
@@ -67,11 +73,10 @@ class MainViewModel(private val appContext: Application)
         _refreshActive.value = false
     }
 
-    private suspend fun recreateAppInfoList(): MutableList<AppInfo> {
-        return withContext(Dispatchers.IO) {
-            val dataList = BackendController.getApplicationList(appContext)
-            dataList
-        }
+    private suspend fun recreateAppInfoList(): MutableList<AppInfo> = withContext(Dispatchers.IO) {
+        val blockedPackagesList = blocklist.value?.map { it.packageName ?: "" } ?: listOf()
+        val dataList = appContext.getApplicationList(blockedPackagesList)
+        dataList
     }
 
     fun updatePackage(packageName: String) {
@@ -85,18 +90,36 @@ class MainViewModel(private val appContext: Application)
         }
     }
 
-    private suspend fun updateListWith(packageName: String): MutableList<AppInfo>? {
-        return withContext(Dispatchers.IO) {
-            val dataList = appInfoList.value
-            var appInfo = dataList?.find { it.packageName == packageName }
-            dataList?.removeIf { it.packageName == packageName }
-            try {
-                appInfo = AppInfo(appContext, appInfo?.backupDirUri ?: Uri.EMPTY, packageName)
-                dataList?.add(appInfo)
-            } catch (e: AssertionError) {
-                Timber.w(e.message ?: "")
-            }
-            dataList
+    private suspend fun updateListWith(packageName: String): MutableList<AppInfo>? = withContext(Dispatchers.IO) {
+        val dataList = appInfoList.value
+        var appInfo = dataList?.find { it.packageName == packageName }
+        dataList?.removeIf { it.packageName == packageName }
+        try {
+            appInfo = AppInfo(appContext, appInfo?.backupDirUri ?: Uri.EMPTY, packageName)
+            dataList?.add(appInfo)
+        } catch (e: AssertionError) {
+            Timber.w(e.message ?: "")
+        }
+        dataList
+    }
+
+    fun addToBlocklist(packageName: String) {
+        viewModelScope.launch {
+            insertIntoBlocklist(packageName)
+            refreshNow.value = true
+        }
+    }
+
+    private suspend fun insertIntoBlocklist(packageName: String) {
+        withContext(Dispatchers.IO) {
+            database.insert(
+                    Blocklist.Builder()
+                            .withId(0)
+                            .withBlocklistId(PACKAGES_LIST_GLOBAL_ID)
+                            .withPackageName(packageName)
+                            .build()
+            )
+            appInfoList.value?.removeIf { it.packageName == packageName }
         }
     }
 

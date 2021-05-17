@@ -29,6 +29,7 @@ import com.machiav3lli.backup.dbs.*
 import com.machiav3lli.backup.dialogs.PackagesListDialogFragment
 import com.machiav3lli.backup.fragments.ScheduleSheet
 import com.machiav3lli.backup.items.SchedulerItemX
+import com.machiav3lli.backup.utils.isNeedRefresh
 import com.machiav3lli.backup.viewmodels.SchedulerViewModel
 import com.machiav3lli.backup.viewmodels.SchedulerViewModelFactory
 import com.mikepenz.fastadapter.FastAdapter
@@ -84,19 +85,15 @@ class SchedulerActivityX : BaseActivity() {
         }
         binding.blocklistButton.setOnClickListener {
             Thread {
-                val args = Bundle()
-                val blocklistedPackages = blocklistDao
-                        .getBlocklistedPackages(PACKAGES_LIST_GLOBAL_ID) as ArrayList<String>
-                args.putStringArrayList(PACKAGES_LIST_ARGS_PACKAGES, blocklistedPackages)
+                val blocklistedPackages = blocklistDao.getBlocklistedPackages(PACKAGES_LIST_GLOBAL_ID)
 
-                val blocklistDialog = PackagesListDialogFragment(SCHED_FILTER_ALL,
+                PackagesListDialogFragment(blocklistedPackages, SCHED_FILTER_ALL,
                         true) { newList: Set<String> ->
                     Thread {
                         blocklistDao.updateList(PACKAGES_LIST_GLOBAL_ID, newList)
+                        isNeedRefresh = true
                     }.start()
-                }
-                blocklistDialog.arguments = args
-                blocklistDialog.show(supportFragmentManager, "BLOCKLIST_DIALOG")
+                }.show(supportFragmentManager, "BLOCKLIST_DIALOG")
             }.start()
         }
         binding.addSchedule.setOnClickListener {
